@@ -403,6 +403,37 @@ class IS800_2025(object):
         return min(Z_p * f_y / gamma_m0, cap * Z_e * f_y / gamma_m0)
 
     @staticmethod
+    def cl_15_elastic_critical_moment(I_y, I_t, I_w, L_LT, modulus_of_elasticity=None, poissons_ratio=None):
+        """Elastic critical moment M_cr of a doubly symmetric I-section against LTB.
+
+        Args:
+            I_y: Second moment of area about the minor axis in mm^4 (float)
+            I_t: St. Venant torsion constant in mm^4 (float)
+            I_w: Warping constant in mm^6 (float)
+            L_LT: Effective length for lateral-torsional buckling in mm (float)
+            modulus_of_elasticity: E in MPa, default 2e5 (float)
+            poissons_ratio: mu, default 0.3 (float)
+
+        Returns:
+            M_cr in N-mm (float)
+
+        Note:
+            M_cr = sqrt( pi^2 E I_y / L^2 * ( G I_t + pi^2 E I_w / L^2 ) ), with
+            G = E / (2 (1 + mu)). This is the classical result for a simply supported,
+            doubly symmetric section under uniform moment (the form used in IS 800:2007
+            Annex E, cl. E-1.2). ASSUMPTIONS: no moment-gradient factor and no load-height
+            effect are applied, so this is conservative for non-uniform moment.
+            TODO(verify): draft elastic buckling annex.
+        """
+        E = IS800_2025.E if modulus_of_elasticity is None else modulus_of_elasticity
+        mu = IS800_2025.MU if poissons_ratio is None else poissons_ratio
+        if min(I_y, I_t, I_w, L_LT) <= 0:
+            raise ValueError("I_y, I_t, I_w and L_LT must be positive")
+        G = E / (2 * (1 + mu))
+        pi2 = math.pi ** 2
+        return math.sqrt(pi2 * E * I_y / L_LT ** 2 * (G * I_t + pi2 * E * I_w / L_LT ** 2))
+
+    @staticmethod
     def cl_15_ltb_design_bending_strength(f_y, M_cr, Z_p, Z_e, section_class='Plastic',
                                           alpha_LT=0.21, gamma_m0=None):
         """Design bending strength of a laterally unsupported beam.

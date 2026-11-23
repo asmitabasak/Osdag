@@ -148,6 +148,28 @@ def test_ltb():
     assert stiff['chi_LT'] == pytest.approx(1.0, abs=1e-3)
 
 
+def test_elastic_critical_moment():
+    # Illustrative values only (not a tabulated section): I_y = 2.6e7 mm^4, I_t = 2.0e5 mm^4, I_w = 2.0e11 mm^6
+    I_y, I_t, I_w, L = 2.6e7, 2.0e5, 2.0e11, 4000.0
+    G = 2e5 / (2 * 1.3)
+    expected = math.sqrt(math.pi ** 2 * 2e5 * I_y / L ** 2 * (G * I_t + math.pi ** 2 * 2e5 * I_w / L ** 2))
+    assert C.cl_15_elastic_critical_moment(I_y, I_t, I_w, L) == pytest.approx(expected)
+    # longer unbraced length -> lower critical moment
+    assert C.cl_15_elastic_critical_moment(I_y, I_t, I_w, 6000) < C.cl_15_elastic_critical_moment(I_y, I_t, I_w, 4000)
+    # no warping and no torsion stiffness -> zero in the limit; negative/zero inputs rejected
+    with pytest.raises(ValueError):
+        C.cl_15_elastic_critical_moment(I_y, I_t, I_w, 0)
+    with pytest.raises(ValueError):
+        C.cl_15_elastic_critical_moment(-1, I_t, I_w, L)
+
+
+def test_elastic_critical_moment_feeds_ltb():
+    M_cr = C.cl_15_elastic_critical_moment(2.6e7, 2.0e5, 2.0e11, 4000)
+    res = C.cl_15_ltb_design_bending_strength(250, M_cr, 6.0e5, 5.5e5)
+    assert 0 < res['chi_LT'] <= 1
+    assert res['M_d'] <= 6.0e5 * 250 / 1.10
+
+
 def test_bolt_hole_size():
     assert C.cl_17_bolt_hole_size(12) == 13
     assert C.cl_17_bolt_hole_size(20) == 22
