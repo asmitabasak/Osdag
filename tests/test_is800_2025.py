@@ -148,6 +148,25 @@ def test_ltb():
     assert stiff['chi_LT'] == pytest.approx(1.0, abs=1e-3)
 
 
+def test_moment_with_high_shear():
+    M_d, M_fd, V_d = 250e6, 150e6, 262e3
+    # at or below 0.6 V_d: unchanged
+    assert C.cl_15_moment_with_high_shear(M_d, M_fd, 0.6 * V_d, V_d, 1e6, 250) == M_d
+    # V = 0.8 V_d -> beta = 0.36 -> M_dv = 250 - 0.36 * 100 = 214 kN-m
+    assert C.cl_15_moment_with_high_shear(M_d, M_fd, 0.8 * V_d, V_d, 1e6, 250) == pytest.approx(214e6)
+    # V = V_d -> beta = 1 -> only the flanges carry moment
+    assert C.cl_15_moment_with_high_shear(M_d, M_fd, V_d, V_d, 1e6, 250) == pytest.approx(M_fd)
+    # reduction is monotonic in V
+    assert (C.cl_15_moment_with_high_shear(M_d, M_fd, 0.9 * V_d, V_d, 1e6, 250)
+            < C.cl_15_moment_with_high_shear(M_d, M_fd, 0.7 * V_d, V_d, 1e6, 250))
+    # the 1.2 Z_e cap applies
+    assert C.cl_15_moment_with_high_shear(400e6, 300e6, 0.65 * V_d, V_d, 1e6, 250) <= 1.2 * 1e6 * 250 / 1.10
+    with pytest.raises(ValueError):
+        C.cl_15_moment_with_high_shear(M_d, M_fd, 1.1 * V_d, V_d, 1e6, 250)
+    with pytest.raises(NotImplementedError):
+        C.cl_15_moment_with_high_shear(M_d, M_fd, 0.8 * V_d, V_d, 1e6, 250, 'Semi-compact')
+
+
 def test_elastic_critical_moment():
     # Illustrative values only (not a tabulated section): I_y = 2.6e7 mm^4, I_t = 2.0e5 mm^4, I_w = 2.0e11 mm^6
     I_y, I_t, I_w, L = 2.6e7, 2.0e5, 2.0e11, 4000.0

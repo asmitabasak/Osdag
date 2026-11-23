@@ -403,6 +403,42 @@ class IS800_2025(object):
         return min(Z_p * f_y / gamma_m0, cap * Z_e * f_y / gamma_m0)
 
     @staticmethod
+    def cl_15_moment_with_high_shear(M_d, M_fd, V, V_d, Z_e, f_y, section_class='Plastic'):
+        """Reduced design moment when the factored shear exceeds 0.6 V_d.
+
+        Args:
+            M_d: Design bending strength without shear reduction in N-mm (float)
+            M_fd: Plastic design strength of the flanges alone (web area excluded) in N-mm (float)
+            V: Factored design shear force in N (float)
+            V_d: Design shear strength in N (float)
+            Z_e: Elastic section modulus in mm^3 (float)
+            f_y: Yield stress in MPa (float)
+            section_class: 'Plastic' or 'Compact' (str)
+
+        Returns:
+            M_dv in N-mm (float)
+
+        Note:
+            2007 cl. 9.2.2: if V <= 0.6 V_d no reduction is needed (M_d is returned);
+            otherwise M_dv = M_d - beta (M_d - M_fd), beta = (2 V / V_d - 1)^2, and
+            M_dv <= 1.2 Z_e f_y / gamma_m0. Applies to plastic and compact sections only;
+            semi-compact and slender sections raise NotImplementedError.
+            TODO(verify): draft Chapter 15.
+        """
+        if section_class not in ('Plastic', 'Compact'):
+            raise NotImplementedError("High-shear reduction is implemented for plastic/compact sections only")
+        if V_d <= 0 or V < 0:
+            raise ValueError("V_d must be positive and V non-negative")
+        if V > V_d:
+            raise ValueError("V exceeds the design shear strength V_d")
+        if V <= 0.6 * V_d:
+            return M_d
+        gamma_m0 = IS800_2025.cl_12_Table_safety_factors["gamma_m0"]['yielding']
+        beta = (2 * V / V_d - 1) ** 2
+        M_dv = M_d - beta * (M_d - M_fd)
+        return min(M_dv, 1.2 * Z_e * f_y / gamma_m0)
+
+    @staticmethod
     def cl_15_elastic_critical_moment(I_y, I_t, I_w, L_LT, modulus_of_elasticity=None, poissons_ratio=None):
         """Elastic critical moment M_cr of a doubly symmetric I-section against LTB.
 
