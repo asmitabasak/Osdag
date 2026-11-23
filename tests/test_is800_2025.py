@@ -125,6 +125,18 @@ def test_shear_and_moment_strength():
         C.cl_15_design_moment_strength(1, 1, 250, 'Slender')
 
 
+def test_moment_strength_cantilever_cap():
+    # Z_p / Z_e = 1.4: simply supported is capped at 1.2, a cantilever allows the full 1.4 (< 1.5)
+    ss = C.cl_15_design_moment_strength(1e6, 1.4e6, 250, 'Plastic')
+    cant = C.cl_15_design_moment_strength(1e6, 1.4e6, 250, 'Plastic', support='cantilever')
+    assert ss == pytest.approx(1.2 * 1e6 * 250 / 1.10)
+    assert cant == pytest.approx(1.4e6 * 250 / 1.10)
+    # and the 1.5 cap binds for a cantilever when Z_p / Z_e = 1.6
+    assert C.cl_15_design_moment_strength(1e6, 1.6e6, 250, support='cantilever') == pytest.approx(1.5 * 1e6 * 250 / 1.10)
+    with pytest.raises(ValueError):
+        C.cl_15_design_moment_strength(1e6, 1.1e6, 250, support='fixed')
+
+
 def test_ltb():
     res = C.cl_15_ltb_design_bending_strength(250, M_cr=5e8, Z_p=1.1e6, Z_e=1.0e6)
     lam = math.sqrt(1.1e6 * 250 / 5e8)

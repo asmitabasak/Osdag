@@ -373,28 +373,34 @@ class IS800_2025(object):
         return A_v * f_y / (math.sqrt(3) * gamma_m0)
 
     @staticmethod
-    def cl_15_design_moment_strength(Z_e, Z_p, f_y, section_class='Plastic'):
+    def cl_15_design_moment_strength(Z_e, Z_p, f_y, section_class='Plastic', support='simply_supported'):
         """Design bending strength of a laterally supported section.
 
         Args:
             Z_e, Z_p: Elastic / plastic section modulus in mm^3 (float)
             f_y: Yield stress in MPa (float)
             section_class: 'Plastic', 'Compact' or 'Semi-compact' (str)
+            support: 'simply_supported' (cap 1.2 Z_e) or 'cantilever' (cap 1.5 Z_e) (str)
 
         Returns:
             M_d in N-mm (float)
 
         Note:
             2007 cl. 8.2.1.2: M_d = beta_b Z_p f_y / gamma_m0 capped at 1.2 Z_e f_y / gamma_m0
-            (1.5 for cantilever/simply supported is not modelled here). Slender sections are
-            not handled. TODO(verify): draft Chapter 15 limits and shear interaction.
+            (simply supported) or 1.5 Z_e f_y / gamma_m0 (cantilever). Slender sections are
+            not handled. TODO(verify): draft Chapter 15 limits.
         """
         gamma_m0 = IS800_2025.cl_12_Table_safety_factors["gamma_m0"]['yielding']
+        if support not in ('simply_supported', 'cantilever'):
+            raise ValueError("support must be 'simply_supported' or 'cantilever'")
         if section_class == 'Slender':
             raise NotImplementedError("Slender sections need effective-section properties")
         if section_class == 'Semi-compact':
             return Z_e * f_y / gamma_m0
-        return min(Z_p * f_y / gamma_m0, 1.2 * Z_e * f_y / gamma_m0)
+        # 2007 cl. 8.2.1.2: cap of 1.2 Z_e f_y/gamma_m0 (simply supported) or 1.5 (cantilever).
+        # TODO(verify): draft Chapter 15 limit.
+        cap = 1.5 if support == 'cantilever' else 1.2
+        return min(Z_p * f_y / gamma_m0, cap * Z_e * f_y / gamma_m0)
 
     @staticmethod
     def cl_15_ltb_design_bending_strength(f_y, M_cr, Z_p, Z_e, section_class='Plastic',
